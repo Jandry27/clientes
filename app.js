@@ -1,5 +1,5 @@
-const SUPABASE_URL = "PEGA_AQUI_TU_PROJECT_URL";
-const SUPABASE_ANON_KEY = "PEGA_AQUI_TU_ANON_PUBLIC_KEY";
+const SUPABASE_URL = "https://zgmvtkwrvrldfegmpygh.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_l8z-6J-hMG6OsEJqUauuQw_b1BGTI0K";
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const elEmail = document.getElementById("email");
