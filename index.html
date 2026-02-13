@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Clientes</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;margin:22px}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    input,button{padding:10px 12px;font-size:14px}
+    input{min-width:240px}
+    table{width:100%;border-collapse:collapse;margin-top:14px}
+    th,td{border:1px solid #ddd;padding:10px;text-align:left}
+    th{background:#f6f6f6}
+    .muted{color:#666;font-size:13px}
+    dialog{border:none;border-radius:12px;padding:16px;width:min(520px,92vw)}
+    dialog::backdrop{background:rgba(0,0,0,.35)}
+  </style>
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <h2>Clientes</h2>
+
+  <div class="row">
+    <input id="email" placeholder="Email" />
+    <input id="pass" type="password" placeholder="Contraseña" />
+    <button id="btnLogin">Entrar</button>
+    <button id="btnLogout">Salir</button>
+    <span class="muted" id="authState"></span>
+  </div>
+
+  <hr />
+
+  <div class="row">
+    <input id="q" placeholder="Buscar: cédula, nombre o apellido (ej: Camacho)" />
+    <button id="btnAdd">+ Nuevo</button>
+    <button id="btnExport">Exportar CSV</button>
+    <label class="muted">Importar CSV <input id="file" type="file" accept=".csv"/></label>
+  </div>
+
+  <div class="muted" id="stats"></div>
+
+  <table>
+    <thead>
+      <tr><th>Cédula</th><th>Nombre completo</th><th style="width:180px">Acciones</th></tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
+
+  <dialog id="dlg">
+    <h3 id="dlgTitle">Nuevo cliente</h3>
+    <div class="row" style="margin-top:10px">
+      <input id="cedula" placeholder="Cédula (10 dígitos)" />
+      <input id="nombre" placeholder="Nombre completo" style="flex:1;min-width:260px" />
+    </div>
+    <div class="row" style="margin-top:14px">
+      <button id="btnSave">Guardar</button>
+      <button id="btnCancel" type="button">Cancelar</button>
+    </div>
+    <div class="muted" id="msg" style="margin-top:10px"></div>
+  </dialog>
+
+  <script src="./app.js"></script>
+</body>
+</html>
