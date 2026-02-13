@@ -1,6 +1,7 @@
 const SUPABASE_URL = "https://zgmvtkwrvrldfegmpygh.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_l8z-6J-hMG6OsEJqUauuQw_b1BGTI0K";
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
 
 const elEmail = document.getElementById("email");
 const elPass = document.getElementById("pass");
