@@ -1,8 +1,15 @@
+// =======================
+//  CONFIG SUPABASE
+// =======================
 const SUPABASE_URL = "https://zgmvtkwrvrldfegmpygh.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_l8z-6J-hMG6OsEJqUauuQw_b1BGTI0K";
+
+// ✅ Importante: NO uses "const supabase = ..." para evitar el error de "shadow global property"
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-
+// =======================
+//  ELEMENTOS UI
+// =======================
 const elEmail = document.getElementById("email");
 const elPass = document.getElementById("pass");
 const btnLogin = document.getElementById("btnLogin");
@@ -22,41 +29,57 @@ let editingId = null;
 let cache = [];
 
 function norm(s){ return (s ?? "").toString().trim().toUpperCase(); }
+
 function escapeHtml(str){
   return (str ?? "").toString()
     .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
     .replaceAll('"',"&quot;").replaceAll("'","&#039;");
 }
 
+// =======================
+//  AUTH UI
+// =======================
 async function refreshAuthUI(){
-  const { data } = await supabase.auth.getSession();
-  authState.textContent = data.session ? "✅ Sesión activa" : "❌ Sin sesión";
+  const { data } = await sb.auth.getSession();
+  const session = data.session;
 
-  const locked = !data.session;
+  authState.textContent = session ? "✅ Sesión activa" : "❌ Sin sesión";
+
+  const locked = !session;
   document.getElementById("btnAdd").disabled = locked;
   document.getElementById("btnExport").disabled = locked;
   document.getElementById("file").disabled = locked;
   elQ.disabled = locked;
 
-  if (data.session) await loadClientes();
+  if (session) await loadClientes();
   else { cache = []; render(); }
 }
 
 btnLogin.onclick = async () => {
   const email = elEmail.value.trim();
   const password = elPass.value;
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+
+  const { error } = await sb.auth.signInWithPassword({ email, password });
   if (error) alert(error.message);
+
   await refreshAuthUI();
 };
 
 btnLogout.onclick = async () => {
-  await supabase.auth.signOut();
+  await sb.auth.signOut();
   await refreshAuthUI();
 };
 
+// Si la sesión cambia (login/logout/refresh), actualiza UI
+sb.auth.onAuthStateChange(() => {
+  refreshAuthUI();
+});
+
+// =======================
+//  CRUD CLIENTES
+// =======================
 async function loadClientes(){
-  const { data, error } = await supabase
+  const { data, error } = await sb
     .from("clientes")
     .select("id, cedula, nombre_completo")
     .order("nombre_completo", { ascending: true });
@@ -68,7 +91,7 @@ async function loadClientes(){
 
 function render(){
   const q = norm(elQ.value);
-  const filtered = cache.filter(c => norm(c.cedula + " " + c.nombre_completo).includes(q));
+  const filtered = cache.filter(c => norm(`${c.cedula} ${c.nombre_completo}`).includes(q));
 
   tbody.innerHTML = filtered.map(c => `
     <tr>
@@ -117,19 +140,22 @@ function validate(cedula, nombre){
 async function upsert(){
   const cedula = elCedula.value;
   const nombre = elNombre.value;
+
   const err = validate(cedula, nombre);
   if (err) { msg.textContent = err; return; }
 
   if (editingId){
-    const { error } = await supabase
+    const { error } = await sb
       .from("clientes")
       .update({ cedula: cedula.trim(), nombre_completo: nombre.trim() })
       .eq("id", editingId);
+
     if (error) { msg.textContent = error.message; return; }
   } else {
-    const { error } = await supabase
+    const { error } = await sb
       .from("clientes")
       .insert({ cedula: cedula.trim(), nombre_completo: nombre.trim() });
+
     if (error) { msg.textContent = error.message; return; }
   }
 
@@ -140,13 +166,18 @@ async function upsert(){
 async function delCliente(id){
   const c = cache.find(x => x.id === id);
   if (!c) return;
+
   if (!confirm(`¿Borrar a: ${c.nombre_completo} (${c.cedula})?`)) return;
 
-  const { error } = await supabase.from("clientes").delete().eq("id", id);
+  const { error } = await sb.from("clientes").delete().eq("id", id);
   if (error) { alert(error.message); return; }
+
   await loadClientes();
 }
 
+// =======================
+//  EVENTOS UI
+// =======================
 document.getElementById("btnAdd").onclick = openNew;
 document.getElementById("btnSave").onclick = upsert;
 document.getElementById("btnCancel").onclick = () => dlg.close();
@@ -159,10 +190,14 @@ tbody.addEventListener("click", (e) => {
   if (b.dataset.del) delCliente(b.dataset.del);
 });
 
+// =======================
+//  EXPORT CSV
+// =======================
 document.getElementById("btnExport").onclick = () => {
   const header = "CEDULA,NOMBRE_COMPLETO\n";
   const rows = cache.map(c => `${csv(c.cedula)},${csv(c.nombre_completo)}`).join("\n");
   const blob = new Blob([header + rows], { type: "text/csv;charset=utf-8" });
+
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = "clientes_export.csv";
@@ -176,6 +211,9 @@ function csv(v){
   return s;
 }
 
+// =======================
+//  IMPORT CSV
+// =======================
 document.getElementById("file").addEventListener("change", async (e) => {
   const f = e.target.files?.[0];
   if (!f) return;
@@ -185,18 +223,27 @@ document.getElementById("file").addEventListener("change", async (e) => {
   if (lines.length < 2) return;
 
   const toUpsert = [];
-  for (let i=1; i<lines.length; i++){
+
+  for (let i = 1; i < lines.length; i++){
     const [cedula, nombre] = parseCSVLine(lines[i]);
     if (!cedula || !nombre) continue;
     if (!/^\d{10}$/.test(cedula.trim())) continue;
+
     toUpsert.push({ cedula: cedula.trim(), nombre_completo: nombre.trim() });
   }
 
-  const { error } = await supabase
+  if (!toUpsert.length) {
+    alert("No se encontraron filas válidas para importar.");
+    e.target.value = "";
+    return;
+  }
+
+  const { error } = await sb
     .from("clientes")
     .upsert(toUpsert, { onConflict: "cedula" });
 
   if (error) alert(error.message);
+
   await loadClientes();
   e.target.value = "";
 });
@@ -204,17 +251,25 @@ document.getElementById("file").addEventListener("change", async (e) => {
 function parseCSVLine(line){
   const out = [];
   let cur = "", inQ = false;
-  for (let i=0; i<line.length; i++){
+
+  for (let i = 0; i < line.length; i++){
     const ch = line[i];
+
     if (ch === '"'){
       if (inQ && line[i+1] === '"'){ cur += '"'; i++; }
       else inQ = !inQ;
-    } else if (ch === ',' && !inQ){
+    } else if (ch === "," && !inQ){
       out.push(cur); cur = "";
-    } else cur += ch;
+    } else {
+      cur += ch;
+    }
   }
+
   out.push(cur);
   return out;
 }
 
+// =======================
+//  INIT
+// =======================
 refreshAuthUI();
