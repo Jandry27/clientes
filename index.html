@@ -4,65 +4,558 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Clientes</title>
-  <style>
-    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;margin:22px}
-    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-    input,button{padding:10px 12px;font-size:14px}
-    input{min-width:240px}
-    table{width:100%;border-collapse:collapse;margin-top:14px}
-    th,td{border:1px solid #ddd;padding:10px;text-align:left}
-    th{background:#f6f6f6}
-    .muted{color:#666;font-size:13px}
-    dialog{border:none;border-radius:12px;padding:16px;width:min(520px,92vw)}
-    dialog::backdrop{background:rgba(0,0,0,.35)}
-  </style>
 
   <!-- Supabase JS v2 -->
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+
+  <style>
+    :root{
+      --bg:#f6f7f9;
+      --card:#ffffff;
+      --card2:#fbfbfc;
+      --stroke:rgba(15,23,42,.10);
+      --text:rgba(15,23,42,.92);
+      --muted:rgba(15,23,42,.60);
+      --shadow:0 18px 50px rgba(2,6,23,.10);
+      --radius:18px;
+      --radius2:14px;
+      --focus:0 0 0 4px rgba(2,6,23,.08);
+
+      --primary:#1375ec;
+      --primaryBg:rgba(19,117,236,.10);
+      --primaryBd:rgba(19,117,236,.22);
+      --danger:#ef4444;
+      --dangerBg:rgba(239,68,68,.10);
+      --dangerBd:rgba(239,68,68,.22);
+    }
+
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
+
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      color: var(--text);
+      background:
+        radial-gradient(1200px 700px at 10% 10%, rgba(64,179,125,.10), transparent 55%),
+        radial-gradient(1000px 600px at 90% 15%, rgba(19,117,236,.10), transparent 60%),
+        radial-gradient(900px 600px at 50% 110%, rgba(255,81,0,.08), transparent 60%),
+        var(--bg);
+    }
+
+    .container{
+      max-width:1100px;
+      margin:28px auto;
+      padding:0 18px 28px;
+    }
+
+    /* Header */
+    .topbar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:14px;
+      margin-bottom:16px;
+    }
+
+    .brand{
+      display:flex;
+      gap:12px;
+      align-items:center;
+      min-width: 240px;
+    }
+
+    .logo{
+      width:42px;height:42px;
+      border-radius:14px;
+      background: linear-gradient(145deg, rgba(2,6,23,.06), rgba(2,6,23,.02));
+      border:1px solid var(--stroke);
+      display:grid;
+      place-items:center;
+      box-shadow: var(--shadow);
+      flex: 0 0 auto;
+    }
+
+    .brand h1{
+      font-size:18px;
+      margin:0;
+      line-height:1.1;
+      letter-spacing:.2px;
+    }
+    .brand p{
+      margin:3px 0 0;
+      font-size:12.5px;
+      color: var(--muted);
+    }
+
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:8px 10px;
+      border-radius:999px;
+      border:1px solid var(--stroke);
+      background: rgba(255,255,255,.85);
+      color: var(--muted);
+      font-size:12.5px;
+      white-space:nowrap;
+    }
+
+    /* Layout responsive */
+    .grid{
+      display:grid;
+      grid-template-columns:1fr;
+      gap:14px;
+    }
+    @media (min-width: 920px){
+      .grid{ grid-template-columns: 1fr 1fr; }
+    }
+
+    /* Cards */
+    .card{
+      background: var(--card);
+      border: 1px solid var(--stroke);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .card-hd{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:14px;
+      padding:14px 16px;
+      border-bottom: 1px solid var(--stroke);
+      background: linear-gradient(180deg, rgba(2,6,23,.03), transparent);
+    }
+    .title{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      font-weight:650;
+      letter-spacing:.2px;
+    }
+    .subtitle{
+      color: var(--muted);
+      font-size:12.5px;
+      margin-top:2px;
+    }
+    .card-bd{ padding:14px 16px; }
+
+    .row{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      align-items:center;
+    }
+
+    /* Inputs */
+    .field{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding:10px 12px;
+      border-radius:14px;
+      border:1px solid var(--stroke);
+      background: rgba(2,6,23,.02);
+      min-width:240px;
+      flex:1;
+    }
+    .field:focus-within{ box-shadow: var(--focus); }
+
+    .field input{
+      width:100%;
+      border:none;
+      outline:none;
+      background: transparent;
+      color: var(--text);
+      font-size:14px;
+      min-width:140px;
+    }
+    .field input::placeholder{ color: rgba(15,23,42,.42); }
+
+    /* Buttons */
+    .btn{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
+      padding:10px 12px;
+      border-radius:14px;
+      border:1px solid var(--stroke);
+      background: #fff;
+      color: var(--text);
+      cursor:pointer;
+      font-size:14px;
+      transition: transform .08s ease, background .2s ease, border-color .2s ease;
+      user-select:none;
+      white-space: nowrap;
+    }
+    .btn:hover{ background: var(--card2); }
+    .btn:active{ transform: translateY(1px); }
+    .btn:disabled{ opacity:.45; cursor:not-allowed; }
+
+    .btn.primary{
+      background: var(--primaryBg);
+      border-color: var(--primaryBd);
+    }
+    .btn.primary:hover{ background: rgba(19,117,236,.14); }
+
+    .btn.ghost{
+      background: transparent;
+    }
+
+    .btn.danger{
+      background: var(--dangerBg);
+      border-color: var(--dangerBd);
+    }
+    .btn.danger:hover{ background: rgba(239,68,68,.14); }
+
+    .muted{ color: var(--muted); font-size:13px; }
+
+    /* Table */
+    .table-wrap{
+      overflow:auto;
+      border-radius: var(--radius);
+      border:1px solid var(--stroke);
+      background: #fff;
+    }
+    table{
+      width:100%;
+      border-collapse: collapse;
+      min-width:720px;
+    }
+    th,td{
+      padding:12px 12px;
+      border-bottom:1px solid rgba(15,23,42,.08);
+      text-align:left;
+      font-size:14px;
+    }
+    th{
+      font-size:12px;
+      letter-spacing:.08em;
+      text-transform: uppercase;
+      color: rgba(15,23,42,.68);
+      background: rgba(2,6,23,.03);
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    tr:hover td{ background: rgba(2,6,23,.03); }
+
+    /* Modal */
+    dialog{
+      border:1px solid var(--stroke);
+      border-radius:18px;
+      padding:0;
+      width:min(560px, 92vw);
+      background: #fff;
+      color: var(--text);
+      box-shadow: var(--shadow);
+    }
+    dialog::backdrop{ background: rgba(0,0,0,.45); }
+
+    .dlg-hd{
+      padding:14px 16px;
+      border-bottom:1px solid var(--stroke);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      background: linear-gradient(180deg, rgba(2,6,23,.03), transparent);
+    }
+    .dlg-hd h3{ margin:0; font-size:16px; }
+    .dlg-bd{ padding:14px 16px; }
+    .dlg-ft{
+      padding:14px 16px 16px;
+      border-top:1px solid var(--stroke);
+      display:flex;
+      gap:10px;
+      justify-content:flex-end;
+      flex-wrap:wrap;
+    }
+    .hint{
+      margin-top:10px;
+      padding:10px 12px;
+      border-radius:14px;
+      border:1px solid rgba(15,23,42,.10);
+      background: rgba(2,6,23,.02);
+      color: var(--muted);
+      font-size:13px;
+    }
+
+    /* File input */
+    .file{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding:10px 12px;
+      border-radius:14px;
+      border:1px dashed rgba(15,23,42,.18);
+      background: rgba(2,6,23,.02);
+      color: var(--muted);
+    }
+    .file input{ color: var(--muted); }
+    .file input::file-selector-button{
+      border:1px solid var(--stroke);
+      background: #fff;
+      color: var(--text);
+      padding:8px 10px;
+      border-radius:12px;
+      cursor:pointer;
+      margin-right:10px;
+    }
+
+    /* Icons */
+    .ic{ width:18px; height:18px; opacity:.9; }
+    .ic.muted{ opacity:.72; }
+
+    /* Small screens tweaks */
+    @media (max-width: 520px){
+      .topbar{ align-items:flex-start; flex-direction:column; }
+      .pill{ align-self:flex-start; }
+      .btn{ width:100%; }
+      .field{ min-width: 100%; }
+    }
+  </style>
 </head>
+
 <body>
-  <h2>Clientes</h2>
+  <div class="container">
 
-  <div class="row">
-    <input id="email" placeholder="Email" />
-    <input id="pass" type="password" placeholder="Contraseña" />
-    <button id="btnLogin">Entrar</button>
-    <button id="btnLogout">Salir</button>
-    <span class="muted" id="authState"></span>
+    <div class="topbar">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">
+          <svg class="ic" viewBox="0 0 24 24" fill="none">
+            <path d="M16 11a4 4 0 1 0-8 0 4 4 0 0 0 8 0Z" stroke="currentColor" stroke-width="1.7"/>
+            <path d="M4 20c.8-4 3.6-6 8-6s7.2 2 8 6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div>
+          <h1>Clientes</h1>
+          <p>Gestión rápida con Supabase (CRUD + CSV)</p>
+        </div>
+      </div>
+
+      <!-- OJO: mantenemos id="authState" -->
+      <span class="pill" id="authState">
+        <svg class="ic muted" viewBox="0 0 24 24" fill="none">
+          <path d="M12 22a10 10 0 1 0-10-10 10 10 0 0 0 10 10Z" stroke="currentColor" stroke-width="1.7"/>
+          <path d="M8 12l2.5 2.5L16 9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Estado
+      </span>
+    </div>
+
+    <div class="grid">
+
+      <!-- AUTH -->
+      <section class="card">
+        <div class="card-hd">
+          <div>
+            <div class="title">
+              <svg class="ic" viewBox="0 0 24 24" fill="none">
+                <path d="M12 17a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z" stroke="currentColor" stroke-width="1.7"/>
+                <path d="M17 9V7a5 5 0 0 0-10 0v2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                <path d="M6 9h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              Acceso
+            </div>
+            <div class="subtitle">Inicia sesión para gestionar clientes</div>
+          </div>
+
+          <!-- id correcto para tu JS -->
+          <button class="btn ghost" id="btnLogout" type="button" title="Cerrar sesión">
+            <svg class="ic" viewBox="0 0 24 24" fill="none">
+              <path d="M10 17l-1 0a4 4 0 0 1-4-4V7a4 4 0 0 1 4-4h1" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+              <path d="M14 7l5 5-5 5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M19 12H10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+            </svg>
+            Salir
+          </button>
+        </div>
+
+        <div class="card-bd">
+          <div class="row">
+            <div class="field" style="min-width:260px;">
+              <svg class="ic muted" viewBox="0 0 24 24" fill="none">
+                <path d="M4 6h16v12H4V6Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+                <path d="M4 7l8 6 8-6" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+              </svg>
+              <input id="email" placeholder="Email" autocomplete="username" />
+            </div>
+
+            <div class="field" style="min-width:220px;">
+              <svg class="ic muted" viewBox="0 0 24 24" fill="none">
+                <path d="M12 17a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z" stroke="currentColor" stroke-width="1.7"/>
+                <path d="M17 9V7a5 5 0 0 0-10 0v2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                <path d="M6 9h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <input id="pass" type="password" placeholder="Contraseña" autocomplete="current-password" />
+            </div>
+
+            <button class="btn primary" id="btnLogin" type="button">
+              <svg class="ic" viewBox="0 0 24 24" fill="none">
+                <path d="M14 7l5 5-5 5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M19 12H9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                <path d="M10 17H9a4 4 0 0 1-4-4V7a4 4 0 0 1 4-4h1" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+              </svg>
+              Entrar
+            </button>
+          </div>
+
+          <div class="hint">
+            Tip: si usas RLS en Supabase, revisa tus policies para <b>select/insert/update/delete</b> en <b>clientes</b>.
+          </div>
+        </div>
+      </section>
+
+      <!-- HERRAMIENTAS -->
+      <section class="card">
+        <div class="card-hd">
+          <div>
+            <div class="title">
+              <svg class="ic" viewBox="0 0 24 24" fill="none">
+                <path d="M4 7h16M4 12h10M4 17h16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+              </svg>
+              Herramientas
+            </div>
+            <div class="subtitle">Buscar, crear, exportar e importar</div>
+          </div>
+
+          <!-- id correcto para tu JS -->
+          <div class="pill">
+            <svg class="ic muted" viewBox="0 0 24 24" fill="none">
+              <path d="M12 8v4l3 2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+              <path d="M12 22a10 10 0 1 0-10-10 10 10 0 0 0 10 10Z" stroke="currentColor" stroke-width="1.7"/>
+            </svg>
+            <span id="stats">—</span>
+          </div>
+        </div>
+
+        <div class="card-bd">
+          <div class="row" style="margin-bottom:10px">
+            <div class="field" style="flex:1; min-width:320px;">
+              <svg class="ic muted" viewBox="0 0 24 24" fill="none">
+                <path d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" stroke="currentColor" stroke-width="1.7"/>
+                <path d="M16.5 16.5 21 21" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+              </svg>
+              <input id="q" placeholder="Buscar: cédula, nombre o apellido (ej: Camacho)" />
+            </div>
+
+            <button class="btn primary" id="btnAdd" type="button">
+              <svg class="ic" viewBox="0 0 24 24" fill="none">
+                <path d="M12 5v14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                <path d="M5 12h14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+              </svg>
+              Nuevo
+            </button>
+
+            <button class="btn" id="btnExport" type="button">
+              <svg class="ic" viewBox="0 0 24 24" fill="none">
+                <path d="M12 3v10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                <path d="M8 9l4 4 4-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M5 21h14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+              </svg>
+              Exportar CSV
+            </button>
+          </div>
+
+          <div class="file">
+            <svg class="ic muted" viewBox="0 0 24 24" fill="none">
+              <path d="M14 2H7a3 3 0 0 0-3 3v14a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V8l-6-6Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+              <path d="M14 2v6h6" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+            </svg>
+            <span>Importar CSV</span>
+            <input id="file" type="file" accept=".csv" />
+          </div>
+
+          <div class="muted" style="margin-top:10px">
+            Formato esperado: <b>CEDULA,NOMBRE_COMPLETO</b> (con encabezado).
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- TABLA -->
+    <section class="card" style="margin-top:14px;">
+      <div class="card-hd">
+        <div class="title">
+          <svg class="ic" viewBox="0 0 24 24" fill="none">
+            <path d="M4 6h16v12H4V6Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+            <path d="M4 10h16" stroke="currentColor" stroke-width="1.7"/>
+            <path d="M8 10v8" stroke="currentColor" stroke-width="1.7"/>
+          </svg>
+          Lista de clientes
+        </div>
+        <div class="muted">Acciones por fila: Editar / Borrar</div>
+      </div>
+
+      <div class="card-bd">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:160px">Cédula</th>
+                <th>Nombre completo</th>
+                <th style="width:220px">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
   </div>
 
-  <hr />
-
-  <div class="row">
-    <input id="q" placeholder="Buscar: cédula, nombre o apellido (ej: Camacho)" />
-    <button id="btnAdd">+ Nuevo</button>
-    <button id="btnExport">Exportar CSV</button>
-    <label class="muted">Importar CSV <input id="file" type="file" accept=".csv"/></label>
-  </div>
-
-  <div class="muted" id="stats"></div>
-
-  <table>
-    <thead>
-      <tr><th>Cédula</th><th>Nombre completo</th><th style="width:180px">Acciones</th></tr>
-    </thead>
-    <tbody id="tbody"></tbody>
-  </table>
-
+  <!-- MODAL -->
   <dialog id="dlg">
-    <h3 id="dlgTitle">Nuevo cliente</h3>
-    <div class="row" style="margin-top:10px">
-      <input id="cedula" placeholder="Cédula (10 dígitos)" />
-      <input id="nombre" placeholder="Nombre completo" style="flex:1;min-width:260px" />
+    <div class="dlg-hd">
+      <h3 id="dlgTitle">Nuevo cliente</h3>
+      <button class="btn ghost" id="btnCancel" type="button" title="Cerrar">
+        <svg class="ic" viewBox="0 0 24 24" fill="none">
+          <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+        </svg>
+        Cerrar
+      </button>
     </div>
-    <div class="row" style="margin-top:14px">
-      <button id="btnSave">Guardar</button>
-      <button id="btnCancel" type="button">Cancelar</button>
+
+    <div class="dlg-bd">
+      <div class="row">
+        <div class="field" style="min-width:220px;">
+          <svg class="ic muted" viewBox="0 0 24 24" fill="none">
+            <path d="M4 7h16M6 12h12M6 17h10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+          </svg>
+          <input id="cedula" placeholder="Cédula (10 dígitos)" inputmode="numeric" />
+        </div>
+
+        <div class="field" style="flex:1; min-width:260px;">
+          <svg class="ic muted" viewBox="0 0 24 24" fill="none">
+            <path d="M16 11a4 4 0 1 0-8 0 4 4 0 0 0 8 0Z" stroke="currentColor" stroke-width="1.7"/>
+            <path d="M4 20c.8-4 3.6-6 8-6s7.2 2 8 6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+          </svg>
+          <input id="nombre" placeholder="Nombre completo" />
+        </div>
+      </div>
+
+      <div id="msg" class="hint" style="display:block; margin-top:12px;"></div>
     </div>
-    <div class="muted" id="msg" style="margin-top:10px"></div>
+
+    <div class="dlg-ft">
+      <button class="btn primary" id="btnSave" type="button">
+        <svg class="ic" viewBox="0 0 24 24" fill="none">
+          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+          <path d="M17 21v-8H7v8" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+          <path d="M7 3v5h8" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+        </svg>
+        Guardar
+      </button>
+    </div>
   </dialog>
 
-  <!-- Tu JS -->
+  <!-- Tu JS (no se toca) -->
   <script src="./app.js"></script>
 </body>
 </html>
