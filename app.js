@@ -4,11 +4,11 @@
 const SUPABASE_URL = "https://zgmvtkwrvrldfegmpygh.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_l8z-6J-hMG6OsEJqUauuQw_b1BGTI0K";
 
-// ✅ Importante: NO uses "const supabase = ..." para evitar el error de "shadow global property"
+// ✅ NO uses "const supabase = ..." (evita shadow global property)
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // =======================
-//  ELEMENTOS UI
+//  ELEMENTOS UI (IDs del HTML)
 // =======================
 const elEmail = document.getElementById("email");
 const elPass = document.getElementById("pass");
@@ -19,12 +19,22 @@ const authState = document.getElementById("authState");
 const elQ = document.getElementById("q");
 const tbody = document.getElementById("tbody");
 const stats = document.getElementById("stats");
+
+const btnAdd = document.getElementById("btnAdd");
+const btnExport = document.getElementById("btnExport");
+const fileInput = document.getElementById("file");
+
 const dlg = document.getElementById("dlg");
 const dlgTitle = document.getElementById("dlgTitle");
 const msg = document.getElementById("msg");
 const elCedula = document.getElementById("cedula");
 const elNombre = document.getElementById("nombre");
+const btnSave = document.getElementById("btnSave");
+const btnCancel = document.getElementById("btnCancel");
 
+// =======================
+//  ESTADO
+// =======================
 let editingId = null;
 let cache = [];
 
@@ -40,40 +50,51 @@ function escapeHtml(str){
 //  AUTH UI
 // =======================
 async function refreshAuthUI(){
-  const { data } = await sb.auth.getSession();
-  const session = data.session;
+  const { data, error } = await sb.auth.getSession();
+  if (error) console.warn("getSession:", error.message);
 
-  authState.textContent = session ? "✅ Sesión activa" : "❌ Sin sesión";
+  const session = data?.session ?? null;
 
+  // Texto simple (tu HTML lo muestra dentro de una pill)
+  authState.textContent = session ? "Sesión activa" : "Sin sesión";
+
+  // Bloquear UI si no hay sesión
   const locked = !session;
-  document.getElementById("btnAdd").disabled = locked;
-  document.getElementById("btnExport").disabled = locked;
-  document.getElementById("file").disabled = locked;
+  btnAdd.disabled = locked;
+  btnExport.disabled = locked;
+  fileInput.disabled = locked;
   elQ.disabled = locked;
 
-  if (session) await loadClientes();
-  else { cache = []; render(); }
+  if (session){
+    await loadClientes();
+  } else {
+    cache = [];
+    render();
+  }
 }
 
-btnLogin.onclick = async () => {
+btnLogin.addEventListener("click", async () => {
   const email = elEmail.value.trim();
   const password = elPass.value;
+
+  if (!email || !password){
+    alert("Ingresa email y contraseña.");
+    return;
+  }
 
   const { error } = await sb.auth.signInWithPassword({ email, password });
   if (error) alert(error.message);
 
   await refreshAuthUI();
-};
+});
 
-btnLogout.onclick = async () => {
+btnLogout.addEventListener("click", async () => {
   await sb.auth.signOut();
   await refreshAuthUI();
-};
+});
 
 // Si la sesión cambia (login/logout/refresh), actualiza UI
-sb.auth.onAuthStateChange(() => {
-  refreshAuthUI();
-});
+sb.auth.onAuthStateChange(() => refreshAuthUI());
 
 // =======================
 //  CRUD CLIENTES
@@ -84,7 +105,11 @@ async function loadClientes(){
     .select("id, cedula, nombre_completo")
     .order("nombre_completo", { ascending: true });
 
-  if (error) { alert(error.message); return; }
+  if (error){
+    alert(error.message);
+    return;
+  }
+
   cache = data ?? [];
   render();
 }
@@ -93,13 +118,16 @@ function render(){
   const q = norm(elQ.value);
   const filtered = cache.filter(c => norm(`${c.cedula} ${c.nombre_completo}`).includes(q));
 
+  // Botones con clase .btn para verse pro (solo estilo, misma lógica)
   tbody.innerHTML = filtered.map(c => `
     <tr>
       <td>${escapeHtml(c.cedula)}</td>
       <td>${escapeHtml(c.nombre_completo)}</td>
       <td>
-        <button data-edit="${c.id}">Editar</button>
-        <button data-del="${c.id}">Borrar</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn" type="button" data-edit="${c.id}">Editar</button>
+          <button class="btn danger" type="button" data-del="${c.id}">Borrar</button>
+        </div>
       </td>
     </tr>
   `).join("");
@@ -120,18 +148,19 @@ function openNew(){
 function openEdit(id){
   const c = cache.find(x => x.id === id);
   if (!c) return;
+
   editingId = id;
   dlgTitle.textContent = "Editar cliente";
   msg.textContent = "";
-  elCedula.value = c.cedula;
-  elNombre.value = c.nombre_completo;
+  elCedula.value = c.cedula ?? "";
+  elNombre.value = c.nombre_completo ?? "";
   dlg.showModal();
   elCedula.focus();
 }
 
 function validate(cedula, nombre){
-  const c = cedula.trim();
-  const n = nombre.trim();
+  const c = (cedula ?? "").toString().trim();
+  const n = (nombre ?? "").toString().trim();
   if (!c || !n) return "Cédula y Nombre son obligatorios.";
   if (!/^\d{10}$/.test(c)) return "La cédula debe tener 10 dígitos (solo números).";
   return null;
@@ -142,21 +171,35 @@ async function upsert(){
   const nombre = elNombre.value;
 
   const err = validate(cedula, nombre);
-  if (err) { msg.textContent = err; return; }
+  if (err){
+    msg.textContent = err;
+    return;
+  }
+
+  const payload = {
+    cedula: cedula.trim(),
+    nombre_completo: nombre.trim(),
+  };
 
   if (editingId){
     const { error } = await sb
       .from("clientes")
-      .update({ cedula: cedula.trim(), nombre_completo: nombre.trim() })
+      .update(payload)
       .eq("id", editingId);
 
-    if (error) { msg.textContent = error.message; return; }
+    if (error){
+      msg.textContent = error.message;
+      return;
+    }
   } else {
     const { error } = await sb
       .from("clientes")
-      .insert({ cedula: cedula.trim(), nombre_completo: nombre.trim() });
+      .insert(payload);
 
-    if (error) { msg.textContent = error.message; return; }
+    if (error){
+      msg.textContent = error.message;
+      return;
+    }
   }
 
   dlg.close();
@@ -169,8 +212,15 @@ async function delCliente(id){
 
   if (!confirm(`¿Borrar a: ${c.nombre_completo} (${c.cedula})?`)) return;
 
-  const { error } = await sb.from("clientes").delete().eq("id", id);
-  if (error) { alert(error.message); return; }
+  const { error } = await sb
+    .from("clientes")
+    .delete()
+    .eq("id", id);
+
+  if (error){
+    alert(error.message);
+    return;
+  }
 
   await loadClientes();
 }
@@ -178,10 +228,10 @@ async function delCliente(id){
 // =======================
 //  EVENTOS UI
 // =======================
-document.getElementById("btnAdd").onclick = openNew;
-document.getElementById("btnSave").onclick = upsert;
-document.getElementById("btnCancel").onclick = () => dlg.close();
-elQ.oninput = render;
+btnAdd.addEventListener("click", openNew);
+btnSave.addEventListener("click", upsert);
+btnCancel.addEventListener("click", () => dlg.close());
+elQ.addEventListener("input", render);
 
 tbody.addEventListener("click", (e) => {
   const b = e.target.closest("button");
@@ -193,7 +243,7 @@ tbody.addEventListener("click", (e) => {
 // =======================
 //  EXPORT CSV
 // =======================
-document.getElementById("btnExport").onclick = () => {
+btnExport.addEventListener("click", () => {
   const header = "CEDULA,NOMBRE_COMPLETO\n";
   const rows = cache.map(c => `${csv(c.cedula)},${csv(c.nombre_completo)}`).join("\n");
   const blob = new Blob([header + rows], { type: "text/csv;charset=utf-8" });
@@ -203,7 +253,7 @@ document.getElementById("btnExport").onclick = () => {
   a.download = "clientes_export.csv";
   a.click();
   URL.revokeObjectURL(a.href);
-};
+});
 
 function csv(v){
   const s = (v ?? "").toString();
@@ -214,13 +264,17 @@ function csv(v){
 // =======================
 //  IMPORT CSV
 // =======================
-document.getElementById("file").addEventListener("change", async (e) => {
+fileInput.addEventListener("change", async (e) => {
   const f = e.target.files?.[0];
   if (!f) return;
 
   const text = await f.text();
   const lines = text.split(/\r?\n/).filter(l => l.trim().length);
-  if (lines.length < 2) return;
+  if (lines.length < 2){
+    alert("CSV vacío o sin encabezado.");
+    e.target.value = "";
+    return;
+  }
 
   const toUpsert = [];
 
@@ -229,15 +283,19 @@ document.getElementById("file").addEventListener("change", async (e) => {
     if (!cedula || !nombre) continue;
     if (!/^\d{10}$/.test(cedula.trim())) continue;
 
-    toUpsert.push({ cedula: cedula.trim(), nombre_completo: nombre.trim() });
+    toUpsert.push({
+      cedula: cedula.trim(),
+      nombre_completo: nombre.trim(),
+    });
   }
 
-  if (!toUpsert.length) {
+  if (!toUpsert.length){
     alert("No se encontraron filas válidas para importar.");
     e.target.value = "";
     return;
   }
 
+  // Recomendado: tener unique en cedula para que onConflict funcione perfecto
   const { error } = await sb
     .from("clientes")
     .upsert(toUpsert, { onConflict: "cedula" });
